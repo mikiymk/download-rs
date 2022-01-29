@@ -1,8 +1,14 @@
 use reqwest::Url;
 use std::collections::HashSet;
 
+// TODO
+// use javascript
+// redirect
+// data scheme
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use args::Arguments;
     use download::DownloadFile;
     use get_links::get_links;
     use itertools::Itertools;
@@ -10,8 +16,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut urls = Vec::new();
     let mut downloadeds = HashSet::new();
 
-    let initial_url = Url::parse(&get_url())?;
-    urls.push(initial_url.clone());
+    let args = match Arguments::get() {
+        Ok(args) => args,
+        Err(err) => {
+            eprintln!("Can't get args: {:?}", err);
+            return Err(err);
+        }
+    };
+
+    urls.extend(args.starts.clone());
 
     let sleep_time = std::time::Duration::from_millis(100);
 
@@ -38,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let new_urls: Vec<_> = new_urls.into_iter().unique().collect();
 
         for new_url in new_urls {
-            if !downloadeds.contains(&new_url) && initial_url.domain() == new_url.domain() {
+            if !downloadeds.contains(&new_url) && args.is_allow_url(&new_url) {
                 // ダウンロードしてない & 同じドメイン
                 urls.push(new_url);
             }
@@ -50,13 +63,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn get_url() -> String {
-    std::env::args()
-        .nth(1)
-        .unwrap_or("https://google.com".to_string())
-        .to_owned()
-}
-
 async fn download_save(url: &Url) -> Result<download::DownloadFile, Box<dyn std::error::Error>> {
     use download::download_file;
     use save::save_file;
@@ -66,6 +72,7 @@ async fn download_save(url: &Url) -> Result<download::DownloadFile, Box<dyn std:
     Ok(file)
 }
 
+mod args;
 mod download;
 mod get_links;
 mod save;
