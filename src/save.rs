@@ -1,4 +1,4 @@
-use super::download::DownloadFile;
+use super::download::{DownloadBody, DownloadFile};
 use reqwest::Url;
 use std::path::Path;
 
@@ -15,11 +15,12 @@ pub fn save_file(
     create_dir_if_not_exists(path)?;
     let mut file = std::fs::File::create(path)?;
 
-    match download_file {
-        DownloadFile::Text { text, .. } => {
+    match &download_file.body {
+        DownloadBody::Text { text } => {
             write!(file, "{}", text)?;
         }
-        DownloadFile::Binary { byte, .. } => {
+
+        DownloadBody::Binary { byte } => {
             file.write_all(byte)?;
             file.flush()?;
         }
@@ -29,17 +30,27 @@ pub fn save_file(
 }
 
 fn path_from_url(url: &Url) -> String {
+    if url.scheme() == "data" {
+        return format!(
+            "./downloads/data-scheme.example.com/{}",
+            uuid::Uuid::new_v4()
+        );
+    }
     let mut path = format!(
         "./downloads/{}{}",
         url.host()
             .and_then(|x| Some(x.to_string()))
-            .unwrap_or("".to_string()),
+            .unwrap_or("no-host.example.com".to_string()),
         url.path()
     );
     if path.ends_with("/") {
         path = format!("{}index.html", path);
     }
-    path
+
+    match urlencoding::decode(&path) {
+        Ok(path) => path.to_string(),
+        Err(_) => path,
+    }
 }
 
 fn create_dir_if_not_exists(path: &Path) -> Result<(), Box<dyn std::error::Error>> {

@@ -1,9 +1,15 @@
 use bytes::Bytes;
 use reqwest::Url;
 
-pub enum DownloadFile {
-    Text { text: String, content_type: String },
+pub enum DownloadBody {
+    Text { text: String },
     Binary { byte: Bytes },
+}
+
+pub struct DownloadFile {
+    pub body: DownloadBody,
+    pub content_type: String,
+    pub redirect_location: Option<String>,
 }
 
 pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error::Error>> {
@@ -19,16 +25,26 @@ pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error
         .and_then(|x| x.to_str().ok())
         .and_then(|x| x.parse().ok())
         .unwrap_or(0);
+    let redirect_location = headers
+        .get("location")
+        .and_then(|x| x.to_str().ok())
+        .and_then(|x| Some(x.to_string()));
 
     println!("{} {} {}", format_byte(content_length), content_type, url);
 
-    if content_type.starts_with("text") {
+    let body = if content_type.starts_with("text") {
         let text = resp.text().await?;
-        Ok(DownloadFile::Text { content_type, text })
+        DownloadBody::Text { text }
     } else {
         let byte = resp.bytes().await?;
-        Ok(DownloadFile::Binary { byte })
-    }
+        DownloadBody::Binary { byte }
+    };
+
+    Ok(DownloadFile {
+        body,
+        content_type,
+        redirect_location,
+    })
 }
 
 fn format_byte(size: usize) -> String {

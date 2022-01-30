@@ -3,16 +3,17 @@ use std::collections::HashSet;
 
 // TODO
 // use javascript
-// redirect
-// data scheme
+// [x] redirect
+// [x] data scheme
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use args::Arguments;
-    use download::DownloadFile;
+    use download::DownloadBody;
     use get_links::get_links;
     use itertools::Itertools;
 
+    let sleep_time = std::time::Duration::from_millis(1000);
     let mut urls = Vec::new();
     let mut downloadeds = HashSet::new();
 
@@ -25,8 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     urls.extend(args.starts.clone());
-
-    let sleep_time = std::time::Duration::from_millis(100);
 
     while let Some(url) = urls.pop() {
         if downloadeds.contains(&url) {
@@ -41,10 +40,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
+        let url = match file.redirect_location {
+            Some(url) => Url::parse(&url).unwrap(),
+            None => url,
+        };
+
         downloadeds.insert(url.clone());
 
-        let new_urls = match file {
-            DownloadFile::Text { text, content_type } => get_links(&content_type, &url, &text),
+        let new_urls = match file.body {
+            DownloadBody::Text { text } => get_links(&file.content_type, &url, &text),
             _ => Vec::new(),
         };
 
