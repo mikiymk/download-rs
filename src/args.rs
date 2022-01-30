@@ -29,11 +29,10 @@ impl Arguments {
         if starts.is_empty() {
             starts.push(Url::parse("https://example.com")?);
         }
-        if allows.is_empty() {
-            let url = &starts[0];
-            let url = format!("{}://{}", url.scheme(), url.host().ok_or("host dont have")?);
-            allows.push(Url::parse(&url)?)
-        }
+
+        let url = &starts[0];
+        let url = format!("{}://{}", url.scheme(), url.host().ok_or("host dont have")?);
+        allows.push(Url::parse(&url)?);
 
         Ok(Arguments {
             starts,

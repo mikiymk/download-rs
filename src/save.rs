@@ -9,6 +9,16 @@ pub fn save_file(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::prelude::*;
 
+    let mut _url = Url::parse("https://example.com").unwrap();
+    
+    let url = match &download_file.redirect_location {
+        Some(url) => {
+            _url = Url::parse(&url).unwrap();
+            &_url
+        }
+        None => url,
+    };
+
     let path = path_from_url(&url);
     let path = Path::new(&path);
 

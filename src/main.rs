@@ -3,8 +3,10 @@ use std::collections::HashSet;
 
 // TODO
 // use javascript
-// [x] redirect
-// [x] data scheme
+// x redirect
+// x data scheme
+// allow all subdomaion
+// testing
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -56,11 +58,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         for new_url in new_urls {
             if !downloadeds.contains(&new_url) && args.is_allow_url(&new_url) {
-                // ダウンロードしてない & 同じドメイン
+                // ダウンロードしてない & 同じドメインなら予定リストに追加
                 urls.push(new_url);
             }
         }
 
+        // リクエストの間隔を開けるため待機
         std::thread::sleep(sleep_time);
     }
 
