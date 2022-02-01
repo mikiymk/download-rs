@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use get_links::get_links;
     use itertools::Itertools;
 
-    let sleep_time = std::time::Duration::from_millis(1000);
+    let sleep_time = std::time::Duration::from_millis(100);
     let mut urls = Vec::new();
     let mut downloadeds = HashSet::new();
 
@@ -43,12 +43,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let url = file.location;
-
         downloadeds.insert(url.clone());
 
         let new_urls = match file.body {
-            DownloadBody::Text { text } => get_links(&file.content_type, &url, &text),
+            DownloadBody::Text { text } => get_links(&file.content_type, &file.location, &text),
             _ => Vec::new(),
         };
 
