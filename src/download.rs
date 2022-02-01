@@ -14,6 +14,17 @@ pub struct DownloadFile {
     pub location: Url,
 }
 
+#[derive(Debug, Clone)]
+pub struct DownloadError(reqwest::StatusCode);
+
+impl std::fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for DownloadError {}
+
 pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error::Error>> {
     let resp = reqwest::get(url.clone()).await?;
     let headers = resp.headers();
@@ -28,7 +39,11 @@ pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error
         .and_then(|x| x.parse().ok())
         .unwrap_or(0);
     let location = resp.url().clone();
+    let status = resp.status();
 
+    if status.is_client_error() {
+        return Err(Box::new(DownloadError(status)));
+    }
     println!("{} {} {}", format_byte(content_length), content_type, url);
 
     let body = if content_type.starts_with("text") {

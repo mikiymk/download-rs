@@ -1,5 +1,5 @@
+use super::join_url;
 use once_cell::sync::Lazy;
-use regex::Regex;
 use reqwest::Url;
 use scraper::Selector;
 
@@ -33,27 +33,7 @@ static SELECTORS: Lazy<[(Selector, &'static str); 14]> = Lazy::new(|| {
 
 static SRCSET_SELECTOR: Lazy<Selector> = Lazy::new(|| Selector::parse("source[srcset]").unwrap());
 
-static REGULAR_EXPRESSIONS: Lazy<[Regex; 5]> = Lazy::new(|| {
-    [
-        Regex::new(r#"url\("([^"]+)"\)"#).unwrap(),
-        Regex::new(r#"url\('(([^']|\\')+)'\)"#).unwrap(),
-        Regex::new(r#"url\(([^ "'()]+)\)"#).unwrap(),
-        Regex::new(r#"@import "([^"]+)""#).unwrap(),
-        Regex::new(r#"@import '(([^']|\\')+)'"#).unwrap(),
-    ]
-});
-
-pub fn get_links(content_type: &str, url: &Url, document: &str) -> Vec<Url> {
-    if content_type.starts_with("text/html") {
-        get_links_from_html(&url, &document)
-    } else if content_type.starts_with("text/css") {
-        get_links_from_css(&url, &document)
-    } else {
-        Vec::new()
-    }
-}
-
-fn get_links_from_html(url: &Url, document: &str) -> Vec<Url> {
+pub fn get_links_from_html(url: &Url, document: &str) -> Vec<Url> {
     let document = scraper::Html::parse_document(&document);
     let base = document
         .select(&Selector::parse("base").unwrap())
@@ -76,42 +56,39 @@ fn get_links_from_html(url: &Url, document: &str) -> Vec<Url> {
 
     for selected in document.select(&*SRCSET_SELECTOR) {
         let attr = selected.value().attr("srcset").unwrap();
-        for splited in attr.split(',') {
-            let src = match splited.split_whitespace().nth(0) {
-                Some(src) => src,
-                None => continue,
-            };
-
-            let src = match join_url(&base, &src) {
-                Ok(src) => src,
-                Err(_) => continue,
-            };
-
-            urls.push(src);
-        }
+        let links = match get_links_from_html_srcset(attr, &base) {
+            Some(links) => links,
+            None => continue,
+        };
+        urls.extend(links);
     }
 
     urls
 }
 
-fn get_links_from_css(url: &Url, document: &str) -> Vec<Url> {
+fn get_links_from_html_srcset(srcset: &str, base: &Url) -> Option<Vec<Url>> {
     let mut urls = Vec::new();
+    for splited in srcset.split(',') {
+        let src = splited.split_whitespace().nth(0)?;
 
-    for re in &*REGULAR_EXPRESSIONS {
-        for cap in re.captures_iter(document) {
-            if let Ok(url) = join_url(url, &cap[1]) {
-                urls.push(url);
-            }
-        }
+        let src = join_url(&base, &src).ok()?;
+
+        urls.push(src);
     }
 
-    urls
+    Some(urls)
 }
 
-fn join_url(base: &Url, url: &str) -> Result<Url, url::ParseError> {
-    if url.starts_with("data:") {
-        Url::parse(url)
-    } else {
-        base.join(url)
-    }
+#[test]
+fn test_srcset() {
+    let srcset = "../assets/img/footer/banner-sp.png";
+    let url = Url::parse("https://sidem-gs.idolmaster-official.jp/collabo/contact/faq/").unwrap();
+    let expect = Url::parse(
+        "https://sidem-gs.idolmaster-official.jp/collabo/contact/assets/img/footer/banner-sp.png",
+    )
+    .unwrap();
+
+    let links = get_links_from_html_srcset(srcset, &url);
+
+    assert_eq!(links, vec![expect])
 }
