@@ -1,15 +1,17 @@
 use bytes::Bytes;
 use reqwest::Url;
 
+#[derive(Debug, Clone)]
 pub enum DownloadBody {
     Text { text: String },
     Binary { byte: Bytes },
 }
 
+#[derive(Debug, Clone)]
 pub struct DownloadFile {
     pub body: DownloadBody,
     pub content_type: String,
-    pub redirect_location: Option<String>,
+    pub location: Url,
 }
 
 pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error::Error>> {
@@ -25,10 +27,7 @@ pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error
         .and_then(|x| x.to_str().ok())
         .and_then(|x| x.parse().ok())
         .unwrap_or(0);
-    let redirect_location = headers
-        .get("location")
-        .and_then(|x| x.to_str().ok())
-        .and_then(|x| Some(x.to_string()));
+    let location = resp.url().clone();
 
     println!("{} {} {}", format_byte(content_length), content_type, url);
 
@@ -43,7 +42,7 @@ pub async fn download_file(url: &Url) -> Result<DownloadFile, Box<dyn std::error
     Ok(DownloadFile {
         body,
         content_type,
-        redirect_location,
+        location,
     })
 }
 

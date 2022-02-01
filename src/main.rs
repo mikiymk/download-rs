@@ -3,10 +3,11 @@ use std::collections::HashSet;
 
 // TODO
 // use javascript
-// x redirect
+// xx redirect
 // x data scheme
-// allow all subdomaion
+// x allow all subdomaion
 // testing
+// naming
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -27,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    urls.extend(args.starts.clone());
+    urls.extend(args.starts().clone());
 
     while let Some(url) = urls.pop() {
         if downloadeds.contains(&url) {
@@ -42,10 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let url = match file.redirect_location {
-            Some(url) => Url::parse(&url).unwrap(),
-            None => url,
-        };
+        let url = file.location;
 
         downloadeds.insert(url.clone());
 
@@ -75,7 +73,7 @@ async fn download_save(url: &Url) -> Result<download::DownloadFile, Box<dyn std:
     use save::save_file;
 
     let file = download_file(url).await?;
-    save_file(url, &file)?;
+    save_file(&file)?;
     Ok(file)
 }
 

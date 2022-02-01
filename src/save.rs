@@ -3,21 +3,10 @@ use reqwest::Url;
 use std::path::Path;
 
 /// URLに対応した場所にファイルを保存する
-pub fn save_file(
-    url: &Url,
-    download_file: &DownloadFile,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn save_file(download_file: &DownloadFile) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::prelude::*;
 
-    let mut _url = Url::parse("https://example.com").unwrap();
-    
-    let url = match &download_file.redirect_location {
-        Some(url) => {
-            _url = Url::parse(&url).unwrap();
-            &_url
-        }
-        None => url,
-    };
+    let url = &download_file.location;
 
     let path = path_from_url(&url);
     let path = Path::new(&path);
@@ -41,16 +30,13 @@ pub fn save_file(
 
 fn path_from_url(url: &Url) -> String {
     if url.scheme() == "data" {
-        return format!(
-            "./downloads/data-scheme.example.com/{}",
-            uuid::Uuid::new_v4()
-        );
+        return format!("./downloads/data-scheme/{}", uuid::Uuid::new_v4());
     }
     let mut path = format!(
         "./downloads/{}{}",
         url.host()
             .and_then(|x| Some(x.to_string()))
-            .unwrap_or("no-host.example.com".to_string()),
+            .unwrap_or("no-host".to_string()),
         url.path()
     );
     if path.ends_with("/") {
