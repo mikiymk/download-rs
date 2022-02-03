@@ -8,7 +8,7 @@ pub fn save_file(download_file: &DownloadFile) -> Result<(), Box<dyn std::error:
 
     let url = &download_file.location;
 
-    let path = path_from_url(&url);
+    let path = path_from_url(url);
     let path = Path::new(&path);
 
     create_dir_if_not_exists(path)?;
@@ -35,11 +35,11 @@ fn path_from_url(url: &Url) -> String {
     let mut path = format!(
         "./downloads/{}{}",
         url.host()
-            .and_then(|x| Some(x.to_string()))
-            .unwrap_or("no-host".to_string()),
+            .map(|x| x.to_string())
+            .unwrap_or_else(|| "no-host".to_string()),
         url.path()
     );
-    if path.ends_with("/") {
+    if path.ends_with('/') {
         path = format!("{}index.html", path);
     }
 

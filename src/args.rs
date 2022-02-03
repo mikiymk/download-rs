@@ -21,22 +21,22 @@ impl Arguments {
         args.next();
 
         for arg in args {
-            if arg.starts_with("--allow-url=") {
-                let str = format!(r"^{}.*", &arg[12..]);
+            if let Some(pattern) = arg.strip_prefix("--allow-url=") {
+                let str = format!(r"^{}.*", pattern);
                 allows.push(Regex::new(&str)?)
-            } else if arg.starts_with("--allow-domain=") {
-                let str = format!(r"https?://([^/.]\.)*{}/", &arg[15..]);
+            } else if let Some(pattern) = arg.strip_prefix("--allow-domain=") {
+                let str = format!(r"https?://([^/.]\.)*{}/", pattern);
                 allows.push(Regex::new(&str)?)
-            } else if arg.starts_with("--allow-pattern=") {
-                allows.push(Regex::new(&arg[16..])?)
-            } else if arg.starts_with("--ignore-url=") {
-                let str = format!(r"^{}.*", &arg[13..]);
+            } else if let Some(pattern) = arg.strip_prefix("--allow-pattern=") {
+                allows.push(Regex::new(pattern)?)
+            } else if let Some(pattern) = arg.strip_prefix("--ignore-url=") {
+                let str = format!(r"^{}.*", pattern);
                 ignores.push(Regex::new(&str)?)
-            } else if arg.starts_with("--ignore-domain=") {
-                let str = format!(r"https?://([^/.]\.)*{}/", &arg[16..]);
+            } else if let Some(pattern) = arg.strip_prefix("--ignore-domain=") {
+                let str = format!(r"https?://([^/.]\.)*{}/", pattern);
                 ignores.push(Regex::new(&str)?)
-            } else if arg.starts_with("--ignore-pattern=") {
-                allows.push(Regex::new(&arg[17..])?)
+            } else if let Some(pattern) = arg.strip_prefix("--ignore-pattern=") {
+                allows.push(Regex::new(pattern)?)
             } else {
                 starts.push(Url::parse(&arg)?);
             }
@@ -70,10 +70,8 @@ impl Arguments {
     pub fn is_allow_url(&self, url: &Url) -> bool {
         if self.ignores.is_allow_url(url) {
             false
-        } else if self.allows.is_allow_url(url) {
-            true
         } else {
-            false
+            self.allows.is_allow_url(url)
         }
     }
 }

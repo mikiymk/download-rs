@@ -34,21 +34,20 @@ static SELECTORS: Lazy<[(Selector, &'static str); 14]> = Lazy::new(|| {
 static SRCSET_SELECTOR: Lazy<Selector> = Lazy::new(|| Selector::parse("source[srcset]").unwrap());
 
 pub fn get_links_from_html(url: &Url, document: &str) -> Vec<Url> {
-    let document = scraper::Html::parse_document(&document);
+    let document = scraper::Html::parse_document(document);
     let base = document
         .select(&Selector::parse("base").unwrap())
-        .nth(0)
+        .next()
         .and_then(|x| x.value().attr("href"))
         .and_then(|x| url.join(x).ok())
-        .unwrap_or(url.clone())
-        .to_owned();
+        .unwrap_or_else(|| url.clone());
 
     let mut urls = Vec::new();
 
     for (selector, attribute) in &*SELECTORS {
         urls.extend(
             document
-                .select(&selector)
+                .select(selector)
                 .flat_map(|x| x.value().attr(attribute))
                 .flat_map(|x| join_url(&base, x)),
         );
@@ -69,9 +68,9 @@ pub fn get_links_from_html(url: &Url, document: &str) -> Vec<Url> {
 fn get_links_from_html_srcset(srcset: &str, base: &Url) -> Option<Vec<Url>> {
     let mut urls = Vec::new();
     for splited in srcset.split(',') {
-        let src = splited.split_whitespace().nth(0)?;
+        let src = splited.split_whitespace().next()?;
 
-        let src = join_url(&base, &src).ok()?;
+        let src = join_url(base, src).ok()?;
 
         urls.push(src);
     }
