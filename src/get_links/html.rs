@@ -88,7 +88,7 @@ fn test_srcset() {
     )
     .unwrap();
 
-    let links = get_links_from_html_srcset(srcset, &url);
+    let links = get_links_from_html_srcset(srcset, &url).unwrap();
 
     assert_eq!(links, vec![expect])
 }

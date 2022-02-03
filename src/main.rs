@@ -20,10 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut urls = Vec::new();
     let mut downloadeds = HashSet::new();
 
-    let args = match Arguments::get() {
+    let args = match Arguments::new(std::env::args()) {
         Ok(args) => args,
         Err(err) => {
-            eprintln!("Can't get args: {:?}", err);
+            eprintln!("Can't get args");
             return Err(err);
         }
     };
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let file = match download_save(&url).await {
             Ok(file) => file,
             Err(err) => {
-                eprintln!("{:?}", err);
+                eprintln!("{:?} : {}", err, url);
                 continue;
             }
         };

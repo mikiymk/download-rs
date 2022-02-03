@@ -1,32 +1,42 @@
 use regex::Regex;
 use reqwest::Url;
+use std::env::Args;
 
 pub struct Arguments {
     starts: Vec<Url>,
-    allows: Vec<Url>,
-    allow_domains: Vec<Regex>,
-    ignores: Vec<Url>,
+    allows: Rule,
+    ignores: Rule,
+}
+
+struct Rule {
+    patterns: Vec<Regex>,
 }
 
 impl Arguments {
-    pub fn get() -> Result<Arguments, Box<dyn std::error::Error>> {
+    pub fn new(mut args: Args) -> Result<Arguments, Box<dyn std::error::Error>> {
         let mut starts = Vec::new();
         let mut allows = Vec::new();
-        let mut allow_domains = Vec::new();
         let mut ignores = Vec::new();
-
-        let mut args = std::env::args();
 
         args.next();
 
         for arg in args {
             if arg.starts_with("--allow-url=") {
-                allows.push(Url::parse(&arg[12..])?);
+                let str = format!(r"^{}.*", &arg[12..]);
+                allows.push(Regex::new(&str)?)
             } else if arg.starts_with("--allow-domain=") {
-                let str = format!(r"([^.]\.)*{}$", &arg[15..]);
-                allow_domains.push(Regex::new(&str)?)
-            } else if arg.starts_with("--ignore=") {
-                ignores.push(Url::parse(&arg[9..])?);
+                let str = format!(r"https?://([^/.]\.)*{}/", &arg[15..]);
+                allows.push(Regex::new(&str)?)
+            } else if arg.starts_with("--allow-pattern=") {
+                allows.push(Regex::new(&arg[16..])?)
+            } else if arg.starts_with("--ignore-url=") {
+                let str = format!(r"^{}.*", &arg[13..]);
+                ignores.push(Regex::new(&str)?)
+            } else if arg.starts_with("--ignore-domain=") {
+                let str = format!(r"https?://([^/.]\.)*{}/", &arg[16..]);
+                ignores.push(Regex::new(&str)?)
+            } else if arg.starts_with("--ignore-pattern=") {
+                allows.push(Regex::new(&arg[17..])?)
             } else {
                 starts.push(Url::parse(&arg)?);
             }
@@ -35,17 +45,21 @@ impl Arguments {
         if starts.is_empty() {
             starts.push(Url::parse("https://example.com")?);
         }
-        if allows.is_empty() && allow_domains.is_empty() {
+
+        if allows.is_empty() {
             let url = &starts[0];
-            let url = format!("{}://{}", url.scheme(), url.host().ok_or("host dont have")?);
-            allows.push(Url::parse(&url)?);
+            let url = format!(
+                "^{}://{}",
+                url.scheme(),
+                url.host().ok_or("host dont have")?
+            );
+            allows.push(Regex::new(&url)?);
         }
 
         Ok(Arguments {
             starts,
-            allows,
-            allow_domains,
-            ignores,
+            allows: Rule { patterns: allows },
+            ignores: Rule { patterns: ignores },
         })
     }
 
@@ -54,26 +68,24 @@ impl Arguments {
     }
 
     pub fn is_allow_url(&self, url: &Url) -> bool {
-        for ignore in &self.ignores {
-            if url.to_string().starts_with(&ignore.to_string()) {
-                return false;
-            }
+        if self.ignores.is_allow_url(url) {
+            false
+        } else if self.allows.is_allow_url(url) {
+            true
+        } else {
+            false
         }
+    }
+}
 
-        for allow_domain in &self.allow_domains {
-            if let Some(domain) = url.domain() {
-                if allow_domain.is_match(domain) {
-                    return true;
-                }
-            }
-        }
-
-        for allow in &self.allows {
-            if url.to_string().starts_with(&allow.to_string()) {
+impl Rule {
+    fn is_allow_url(&self, url: &Url) -> bool {
+        for pattern in &self.patterns {
+            let url_str = url.to_string();
+            if pattern.is_match(&url_str) {
                 return true;
             }
         }
-
         false
     }
 }

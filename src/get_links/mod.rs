@@ -18,5 +18,18 @@ fn join_url(base: &Url, url: &str) -> Result<Url, url::ParseError> {
     }
 }
 
+#[test]
+fn test_join_url() {
+    let base = Url::parse("https://adm-sidem-gs.idolmaster-official.jp/story/#").unwrap();
+    let url = "..//wsm/";
+
+    let joined = join_url(&base, url).unwrap();
+
+    assert_eq!(
+        joined,
+        Url::parse("https://adm-sidem-gs.idolmaster-official.jp/wsm/").unwrap()
+    )
+}
+
 mod css;
 mod html;
